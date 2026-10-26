@@ -1,0 +1,21 @@
+problemCode,detailCode,detailName,detailNameEn,detailNameId,valueType,valueCode,valueDisplay,valueDisplayEn,valueDisplayId
+pain,severity,嚴重程度,Severity,Tingkat keparahan,code,mild,輕度,Mild,Ringan
+pain,severity,嚴重程度,Severity,Tingkat keparahan,code,moderate,中度,Moderate,Sedang
+pain,severity,嚴重程度,Severity,Tingkat keparahan,code,severe,重度,Severe,Berat
+pain,bodySite,發生部位,Body Site,Lokasi tubuh,code,head,頭部,Head,Kepala
+pain,quality,疼痛模式,Pain Quality,Sifat nyeri,code,sharp,刺痛,Sharp pain,Nyeri tajam
+pain,quality,疼痛模式,Pain Quality,Sifat nyeri,code,dull,悶痛,Dull pain,Nyeri tumpul
+pain,quality,疼痛模式,Pain Quality,Sifat nyeri,code,burning,灼熱痛,Burning pain,Nyeri terbakar
+pain,onset,發生速度,Onset Speed,Kecepatan onset,code,sudden,突然發生,Sudden onset,Muncul tiba-tiba
+pain,onset,發生速度,Onset Speed,Kecepatan onset,code,gradual,逐漸發生,Gradual onset,Muncul bertahap
+pain,frequency,發生頻率,Frequency,Frekuensi,code,continuous,持續性,Continuous,Terus-menerus
+pain,frequency,發生頻率,Frequency,Frekuensi,code,intermittent,間歇性,Intermittent,Hilang timbul
+pain,aggravating,加重因素,Aggravating Factor,Faktor yang memperberat,code,movement,活動,Movement,Gerakan
+pain,relieving,緩解因素,Relieving Factor,Faktor yang meredakan,code,rest,休息,Rest,Istirahat
+pain,radiation,疼痛放射,Radiation,Penjalaran nyeri,boolean,no,無,No,Tidak
+pain,radiation,疼痛放射,Radiation,Penjalaran nyeri,boolean,yes,有,Yes,Ya
+pain,associated,伴隨症狀,Associated Symptom,Gejala penyerta,code,nausea,噁心,Nausea,Mual
+pain,associated,伴隨症狀,Associated Symptom,Gejala penyerta,code,dyspnea,呼吸困難,Dyspnea,Sesak napas
+pain,score,疼痛分數,Pain Score,Skor nyeri,integer,0,0,0,0
+pain,score,疼痛分數,Pain Score,Skor nyeri,integer,1,1,1,1
+pain,score,疼痛分數,Pain Score,Skor nyeri,integer,2,2,2,2

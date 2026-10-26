@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Patient problem Observation (micro IG)</title>
+<style>
+:root{--bg:#f5f7f8;--card:#fff;--ink:#1d2b33;--mute:#5d6e78;--line:#d5dde2;--accent:#0f6b6b;--accent-ink:#fff;--warn:#a33a2b;--ok:#1f6b3a}
+@media (prefers-color-scheme:dark){:root{--bg:#12191d;--card:#1a242a;--ink:#e6edf0;--mute:#9aaab3;--line:#2e3d45;--accent:#4fb3b3;--accent-ink:#0b1417;--warn:#ff8f7e;--ok:#7fd39b}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Noto Sans TC","Microsoft JhengHei",sans-serif}
+main{max-width:860px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+h1{font-size:1.4rem;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 20px}
+.lang{display:flex;align-items:center;gap:8px}
+.lang label{margin:0}
+.lang select{width:auto}
+section{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:16px;margin-bottom:16px}
+h2{font-size:1.05rem;margin:0 0 12px}
+label{display:block;font-size:.9rem;color:var(--mute);margin:10px 0 4px}
+input[type=text],select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);font:inherit}
+textarea{font:13px/1.45 ui-monospace,Menlo,Consolas,monospace;min-height:220px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:620px){.row{grid-template-columns:1fr}}
+button{font:inherit;padding:8px 16px;border-radius:4px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);cursor:pointer;margin:12px 8px 0 0}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+fieldset{border:1px solid var(--line);border-radius:4px;margin:12px 0;padding:8px 12px}
+legend{font-weight:600;padding:0 6px}
+legend small{font-weight:400;color:var(--mute);margin-left:6px}
+.opts{display:flex;flex-wrap:wrap;gap:4px 18px}
+.opts label{display:flex;align-items:center;gap:6px;margin:4px 0;color:var(--ink);font-size:1rem}
+.msg{margin:10px 0 0;font-size:.92rem}
+.err{color:var(--warn)}.ok{color:var(--ok)}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div>
+    <h1 data-i="title"></h1>
+    <p class="sub" data-i="subtitle"></p>
+  </div>
+  <div class="lang">
+    <label for="lang" data-i="language"></label>
+    <select id="lang">
+      <option value="en">English</option>
+      <option value="id">Bahasa Indonesia</option>
+      <option value="zh">中文</option>
+    </select>
+  </div>
+</header>
+
+<section>
+<h2 data-i="h_setup"></h2>
+<div class="row">
+<div><label for="base" data-i="l_server"></label><input type="text" id="base" value="https://hapi.fhir.org/baseR4"></div>
+<div><label for="pid" data-i="l_patient"></label><input type="text" id="pid" value="7158c01b-32ba-4fbd-a038-201a0a2a4e2a"></div>
+</div>
+<label for="drurl" data-i="l_drurl"></label>
+<input type="text" id="drurl" value="https://hapi.fhir.org/baseR4/DocumentReference/0357f300-36e8-4f04-8049-746854d9c03a">
+<label for="csvfile" data-i="l_csv"></label>
+<input type="file" id="csvfile" accept=".csv,text/csv">
+<button id="btnLoad" data-i="b_load"></button>
+<p class="msg" id="loadMsg" role="status"></p>
+</section>
+
+<section id="formSec" hidden>
+<h2 data-i="h_input"></h2>
+<div class="row">
+<div><label for="problem" data-i="l_problem"></label><select id="problem"></select></div>
+<div><label for="pdisp" data-i="l_pdisp"></label><input type="text" id="pdisp"></div>
+</div>
+<label for="mtime" data-i="l_time"></label>
+<input type="text" id="mtime" readonly>
+<div id="details"></div>
+<button id="btnGen" data-i="b_gen"></button>
+</section>
+
+<section id="jsonSec" hidden>
+<h2 data-i="h_json"></h2>
+<textarea id="jsonOut" spellcheck="false"></textarea>
+<button id="btnPost" data-i="b_post"></button>
+<h2 style="margin-top:20px" data-i="h_resp"></h2>
+<textarea id="resp" readonly style="min-height:140px"></textarea>
+<p class="msg" id="postMsg" role="status"></p>
+</section>
+</main>
+
+<script>
+// ---------- UI text: English / Indonesia / 中文 ----------
+var I18N = {
+  en: {
+    title: "Patient problem Observation entry",
+    subtitle: "Load a detail.csv from a DocumentReference, pick the details, and upload a FHIR Observation that follows the patient problem micro IG.",
+    language: "Language",
+    h_setup: "1. Settings and specification", l_server: "FHIR server", l_patient: "Patient.id",
+    l_drurl: "DocumentReference URL (contains detail.csv as base64)", l_csv: "Or choose a local detail.csv",
+    b_load: "Load specification",
+    h_input: "2. Enter problem details", l_problem: "Problem (problemCode)", l_pdisp: "Problem name (problem.display)",
+    l_time: "Measurement time (current computer time)", b_gen: "Generate JSON",
+    h_json: "3. Observation JSON", b_post: "Upload to FHIR server", h_resp: "4. Server response",
+    single: "single choice", multi: "multiple choice",
+    needSource: "Enter a DocumentReference URL or choose a CSV file.",
+    loading: "Loading…",
+    loaded: function (n, p) { return "Loaded " + n + " rows covering " + p + " problem(s)."; },
+    errCsv: "The CSV has no usable rows. Check that it has the columns problemCode, detailCode and valueCode.",
+    errHttp: function (s) { return "Could not read the DocumentReference (HTTP " + s + ")."; },
+    errNoData: "This DocumentReference has no content.attachment.data.",
+    generated: function (n) { return n ? "Generated " + n + " component(s). You can edit the JSON before uploading." : "No details selected. You can still upload a record with only the problem code."; },
+    errJson: "Invalid JSON: ", uploading: "Uploading…",
+    okUpload: "Upload succeeded. Retrieval URL: ", failUpload: "Upload failed. See the server response.",
+    errConn: "Connection failed: "
+  },
+  id: {
+    title: "Input Observation masalah pasien",
+    subtitle: "Muat detail.csv dari DocumentReference, pilih rincian, lalu unggah FHIR Observation sesuai micro IG masalah pasien.",
+    language: "Bahasa",
+    h_setup: "1. Pengaturan dan spesifikasi", l_server: "Server FHIR", l_patient: "Patient.id",
+    l_drurl: "URL DocumentReference (berisi detail.csv dalam base64)", l_csv: "Atau pilih detail.csv dari komputer",
+    b_load: "Muat spesifikasi",
+    h_input: "2. Isi rincian masalah", l_problem: "Masalah (problemCode)", l_pdisp: "Nama masalah (problem.display)",
+    l_time: "Waktu pengukuran (waktu komputer saat ini)", b_gen: "Buat JSON",
+    h_json: "3. JSON Observation", b_post: "Unggah ke server FHIR", h_resp: "4. Respons server",
+    single: "pilih satu", multi: "boleh pilih banyak",
+    needSource: "Masukkan URL DocumentReference atau pilih file CSV.",
+    loading: "Memuat…",
+    loaded: function (n, p) { return "Berhasil memuat " + n + " baris untuk " + p + " masalah."; },
+    errCsv: "CSV tidak berisi baris yang dapat dipakai. Pastikan ada kolom problemCode, detailCode, dan valueCode.",
+    errHttp: function (s) { return "DocumentReference tidak dapat dibaca (HTTP " + s + ")."; },
+    errNoData: "DocumentReference ini tidak memiliki content.attachment.data.",
+    generated: function (n) { return n ? "Berhasil membuat " + n + " component. JSON dapat diubah sebelum diunggah." : "Belum ada rincian yang dipilih. Anda tetap dapat mengunggah catatan yang hanya berisi kode masalah."; },
+    errJson: "JSON tidak valid: ", uploading: "Mengunggah…",
+    okUpload: "Unggahan berhasil. URL untuk melihat data: ", failUpload: "Unggahan gagal. Lihat respons server.",
+    errConn: "Koneksi gagal: "
+  },
+  zh: {
+    title: "病人問題狀況 Observation 輸入",
+    subtitle: "讀取 DocumentReference 內的 detail.csv，選擇問題細節，產生並上傳符合 patient problem micro IG 的 FHIR Observation。",
+    language: "語言",
+    h_setup: "1. 設定與載入規格", l_server: "FHIR server", l_patient: "Patient.id",
+    l_drurl: "DocumentReference URL（內含 base64 的 detail.csv）", l_csv: "或選擇本機 detail.csv",
+    b_load: "載入規格",
+    h_input: "2. 輸入問題細節", l_problem: "問題 (problemCode)", l_pdisp: "問題名稱 (problem.display)",
+    l_time: "量測時間（電腦目前時間）", b_gen: "產生 JSON",
+    h_json: "3. Observation JSON", b_post: "上傳到 FHIR server", h_resp: "4. 伺服器回應",
+    single: "單選", multi: "可多選",
+    needSource: "請輸入 DocumentReference URL 或選擇 CSV 檔。",
+    loading: "載入中…",
+    loaded: function (n, p) { return "已載入 " + n + " 列規格，共 " + p + " 種問題。"; },
+    errCsv: "CSV 沒有可用資料，請確認欄位含 problemCode、detailCode、valueCode。",
+    errHttp: function (s) { return "無法讀取 DocumentReference（HTTP " + s + "）。"; },
+    errNoData: "此 DocumentReference 沒有 content.attachment.data。",
+    generated: function (n) { return n ? "已產生 " + n + " 個 component，可在上傳前修改 JSON。" : "尚未選擇任何細節，仍可上傳僅含問題代碼的紀錄。"; },
+    errJson: "JSON 格式錯誤：", uploading: "上傳中…",
+    okUpload: "上傳成功。調閱 URL：", failUpload: "上傳失敗，請查看伺服器回應。",
+    errConn: "連線失敗："
+  }
+};
+
+var SYS = {
+  category: "https://misac/codesystem/categorycode",
+  problem: "https://misac/codesystem/patient_problem_code",
+  detail: "https://misac/codesystem/patient_problem_detail_code",
+  value: "https://misac/codesystem/patient_problem_detail_value"
+};
+var SINGLE_DEFAULT = ["severity", "frequency", "onset", "duration"];
+var HTML_LANG = { en: "en", id: "id", zh: "zh-Hant" };
+var rows = [], lang = "en", lastMsg = {};   // lastMsg 讓切換語言時可重新翻譯訊息
+
+var $ = function (id) { return document.getElementById(id); };
+function t(k) { return I18N[lang][k]; }
+
+// 訊息以 {key,args,cls,suffix} 記錄，切換語言時重新產生文字
+function say(id, key, args, cls) {
+  lastMsg[id] = { key: key, args: args || [], cls: cls || "" };
+  paintMsg(id);
+}
+function paintMsg(id) {
+  var m = lastMsg[id], e = $(id);
+  if (!m) { e.textContent = ""; return; }
+  var v = t(m.key);
+  e.textContent = typeof v === "function" ? v.apply(null, m.args) : v + (m.args[0] && typeof m.args[0] === "string" && m.key.indexOf("err") === 0 ? m.args[0] : "");
+  e.className = "msg " + m.cls;
+  if (m.link) {
+    var a = document.createElement("a");
+    a.href = m.link; a.target = "_blank"; a.rel = "noopener"; a.textContent = m.link;
+    e.appendChild(a);
+  }
+}
+
+// ---------- 語言 ----------
+// 規格 CSV 的欄位：zh 用 detailName / valueDisplay，en 用 ...En，id 用 ...Id（沒有時退回英文）
+function pick(r, base) {
+  if (lang === "zh") return r[base] || r[base + "En"] || "";
+  if (lang === "id") return r[base + "Id"] || r[base + "En"] || r[base] || "";
+  return r[base + "En"] || r[base] || "";
+}
+
+function applyLang() {
+  document.documentElement.lang = HTML_LANG[lang];
+  document.title = t("title");
+  document.querySelectorAll("[data-i]").forEach(function (e) { e.textContent = t(e.getAttribute("data-i")); });
+  Object.keys(lastMsg).forEach(paintMsg);
+  if (rows.length) renderDetails(true);
+  try { localStorage.setItem("pp_lang", lang); } catch (e) {}
+}
+
+$("lang").onchange = function () { lang = this.value; applyLang(); };
+
+// ---------- CSV ----------
+function parseCSV(text) {
+  text = text.replace(/^\uFEFF/, "");
+  var out = [], row = [], cur = "", q = false;
+  for (var i = 0; i < text.length; i++) {
+    var c = text[i];
+    if (q) {
+      if (c === '"' && text[i + 1] === '"') { cur += '"'; i++; }
+      else if (c === '"') q = false;
+      else cur += c;
+    } else if (c === '"') q = true;
+    else if (c === ",") { row.push(cur); cur = ""; }
+    else if (c === "\n" || c === "\r") {
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      row.push(cur); cur = "";
+      if (row.some(function (x) { return x.trim() !== ""; })) out.push(row);
+      row = [];
+    } else cur += c;
+  }
+  row.push(cur);
+  if (row.some(function (x) { return x.trim() !== ""; })) out.push(row);
+  if (!out.length) return [];
+  var head = out[0].map(function (h) { return h.trim(); });
+  return out.slice(1).map(function (r) {
+    var o = {};
+    head.forEach(function (h, i) { o[h] = (r[i] || "").trim(); });
+    return o;
+  });
+}
+
+function b64ToText(b64) {
+  var bin = atob(b64.replace(/\s/g, ""));
+  var bytes = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder("utf-8").decode(bytes);
+}
+
+// ---------- 載入 ----------
+function useCSV(text) {
+  rows = parseCSV(text).filter(function (r) { return r.problemCode && r.detailCode && r.valueCode; });
+  if (!rows.length) throw new Error(t("errCsv"));
+  var problems = [], seen = {};
+  rows.forEach(function (r) { if (!seen[r.problemCode]) { seen[r.problemCode] = 1; problems.push(r.problemCode); } });
+  var sel = $("problem");
+  sel.innerHTML = "";
+  problems.forEach(function (p) { var o = document.createElement("option"); o.value = p; o.textContent = p; sel.appendChild(o); });
+  $("formSec").hidden = false;
+  $("jsonSec").hidden = true;
+  $("mtime").value = new Date().toISOString();
+  renderDetails(false);
+  say("loadMsg", "loaded", [rows.length, problems.length], "ok");
+}
+
+$("btnLoad").onclick = function () {
+  var f = $("csvfile").files[0];
+  if (f) {
+    var rd = new FileReader();
+    rd.onload = function () {
+      try { useCSV(rd.result); } catch (e) { lastMsg.loadMsg = null; $("loadMsg").textContent = e.message; $("loadMsg").className = "msg err"; }
+    };
+    rd.readAsText(f, "utf-8");
+    return;
+  }
+  var url = $("drurl").value.trim();
+  if (!url) { say("loadMsg", "needSource", [], "err"); return; }
+  say("loadMsg", "loading");
+  fetch(url, { headers: { Accept: "application/fhir+json" } })
+    .then(function (r) {
+      if (!r.ok) { var e = new Error(); e.key = "errHttp"; e.args = [r.status]; throw e; }
+      return r.json();
+    })
+    .then(function (dr) {
+      var data = dr.content && dr.content[0] && dr.content[0].attachment && dr.content[0].attachment.data;
+      if (!data) { var e = new Error(); e.key = "errNoData"; e.args = []; throw e; }
+      useCSV(b64ToText(data));
+    })
+    .catch(function (e) {
+      if (e.key) say("loadMsg", e.key, e.args, "err");
+      else { lastMsg.loadMsg = null; $("loadMsg").textContent = e.message; $("loadMsg").className = "msg err"; }
+    });
+};
+
+// ---------- 輸入表單 ----------
+function isSingle(g) {
+  var s = (g[0].selectionType || "").toLowerCase();
+  if (s) return s === "single";
+  return SINGLE_DEFAULT.indexOf(g[0].detailCode) >= 0;
+}
+
+// keep=true：切換語言時保留已勾選的項目
+function renderDetails(keep) {
+  var p = $("problem").value, box = $("details");
+  var checked = {};
+  if (keep) box.querySelectorAll("input:checked").forEach(function (i) { checked[i.name + "|" + i.value] = 1; });
+  box.innerHTML = "";
+  var groups = {}, order = [];
+  rows.filter(function (r) { return r.problemCode === p; }).forEach(function (r) {
+    if (!groups[r.detailCode]) { groups[r.detailCode] = []; order.push(r.detailCode); }
+    groups[r.detailCode].push(r);
+  });
+  order.forEach(function (dc) {
+    var g = groups[dc], single = isSingle(g);
+    var fs = document.createElement("fieldset");
+    var lg = document.createElement("legend");
+    lg.textContent = pick(g[0], "detailName") || dc;
+    var sm = document.createElement("small");
+    sm.textContent = single ? t("single") : t("multi");
+    lg.appendChild(sm);
+    fs.appendChild(lg);
+    var opts = document.createElement("div");
+    opts.className = "opts";
+    g.forEach(function (r) {
+      var lab = document.createElement("label");
+      var inp = document.createElement("input");
+      inp.type = single ? "radio" : "checkbox";
+      inp.name = "d_" + dc;
+      inp.value = r.valueCode;
+      inp.setAttribute("data-detail", dc);
+      if (checked[inp.name + "|" + inp.value]) inp.checked = true;
+      lab.appendChild(inp);
+      lab.appendChild(document.createTextNode(pick(r, "valueDisplay") || r.valueCode));
+      opts.appendChild(lab);
+    });
+    fs.appendChild(opts);
+    box.appendChild(fs);
+  });
+}
+$("problem").onchange = function () { $("jsonSec").hidden = true; renderDetails(false); };
+
+// ---------- 產生 Observation ----------
+// 寫入 FHIR 的主要 display 一律使用 CSV 原始欄位（中文優先），不隨介面語言改變；
+// 其他語言（zh-Hant / en / id）以 FHIR 標準 translation extension 附在 _display / _text，
+// 並以 Observation.language 標示主要文字語言。
+var TR_URL = "http://hl7.org/fhir/StructureDefinition/translation";
+function hasCJK(s) { return /[\u3400-\u9fff]/.test(s || ""); }
+
+// 回傳 {text, lang, tr:[{lang,content}]}；沒有的語言不補，不拿英文充當印尼文
+function labelSet(r, base) {
+  var zh = r[base] || "", en = r[base + "En"] || "", id = r[base + "Id"] || "";
+  var cjk = hasCJK(zh);
+  var text = cjk ? zh : (en || zh || id);
+  var lang = cjk ? "zh-Hant" : "en";
+  var all = { "zh-Hant": cjk ? zh : "", en: en || (!cjk ? zh : ""), id: id };
+  var tr = [];
+  ["zh-Hant", "en", "id"].forEach(function (l) {
+    if (l !== lang && all[l] && all[l] !== text) tr.push({ lang: l, content: all[l] });
+  });
+  return { text: text, lang: lang, tr: tr };
+}
+function transExt(tr) {
+  return { extension: tr.map(function (x) {
+    return { url: TR_URL, extension: [{ url: "lang", valueCode: x.lang }, { url: "content", valueString: x.content }] };
+  }) };
+}
+function coding(system, code, ls) {
+  var c = { system: system, code: code, display: ls.text };
+  if (ls.tr.length) c._display = transExt(ls.tr);
+  return c;
+}
+
+function buildObservation() {
+  var p = $("problem").value;
+  var pdisp = $("pdisp").value.trim() || p;
+  var comps = [], langs = [];
+  document.querySelectorAll("#details input:checked").forEach(function (inp) {
+    var r = rows.filter(function (x) {
+      return x.problemCode === p && x.detailCode === inp.getAttribute("data-detail") && x.valueCode === inp.value;
+    })[0];
+    if (!r) return;
+    var dn = labelSet(r, "detailName"), vd = labelSet(r, "valueDisplay");
+    langs.push(vd.lang);
+    var valueCoding = [coding(SYS.value, r.valueCode, vd)];
+    if (r.code && r.system && r.system !== "localCode") {
+      var uri = /snomed/i.test(r.system) ? "http://snomed.info/sct" : r.system;
+      valueCoding.push({ system: uri, code: r.code, display: r.valueDisplayEn || vd.text });
+    }
+    var vcc = { coding: valueCoding, text: vd.text };
+    if (vd.tr.length) vcc._text = transExt(vd.tr);
+    comps.push({ code: { coding: [coding(SYS.detail, r.detailCode, dn)] }, valueCodeableConcept: vcc });
+  });
+  var catLs = { text: "病人問題狀況", tr: [{ lang: "en", content: "Patient problem" }, { lang: "id", content: "Masalah pasien" }] };
+  var docLang = langs.indexOf("zh-Hant") >= 0 || hasCJK(pdisp) ? "zh-Hant" : "en";
+  return {
+    resourceType: "Observation",
+    language: docLang,
+    status: "final",
+    category: [{ coding: [coding(SYS.category, "patient_problem", catLs)] }],
+    code: { coding: [{ system: SYS.problem, code: p, display: pdisp }] },
+    subject: { reference: "Patient/" + $("pid").value.trim() },
+    effectiveDateTime: new Date().toISOString(),
+    component: comps
+  };
+}
+
+$("btnGen").onclick = function () {
+  var obs = buildObservation();
+  $("jsonOut").value = JSON.stringify(obs, null, 2);
+  $("jsonSec").hidden = false;
+  $("resp").value = "";
+  say("postMsg", "generated", [obs.component.length]);
+};
+
+// ---------- 上傳 ----------
+$("btnPost").onclick = function () {
+  var body;
+  try { body = JSON.parse($("jsonOut").value); }
+  catch (e) { lastMsg.postMsg = { key: "errJson", args: [e.message], cls: "err" }; paintMsg("postMsg"); return; }
+  var base = $("base").value.trim().replace(/\/$/, "");
+  say("postMsg", "uploading");
+  fetch(base + "/Observation", {
+    method: "POST",
+    headers: { "Content-Type": "application/fhir+json", Accept: "application/fhir+json" },
+    body: JSON.stringify(body)
+  })
+    .then(function (r) { return r.text().then(function (tx) { return { ok: r.ok, status: r.status, text: tx }; }); })
+    .then(function (res) {
+      var pretty = res.text, j = null;
+      try { j = JSON.parse(res.text); pretty = JSON.stringify(j, null, 2); } catch (e) {}
+      $("resp").value = "HTTP " + res.status + "\n" + pretty;
+      if (res.ok && j && j.id) {
+        say("postMsg", "okUpload", [], "ok");
+        lastMsg.postMsg.link = base + "/Observation/" + j.id;
+        paintMsg("postMsg");
+      } else say("postMsg", "failUpload", [], "err");
+    })
+    .catch(function (e) { lastMsg.postMsg = { key: "errConn", args: [e.message], cls: "err" }; paintMsg("postMsg"); });
+};
+
+// ---------- 初始語言：上次選擇 > 瀏覽器語言 > English ----------
+(function () {
+  var saved = null;
+  try { saved = localStorage.getItem("pp_lang"); } catch (e) {}
+  var nav = (navigator.language || "en").toLowerCase();
+  lang = I18N[saved] ? saved : nav.indexOf("zh") === 0 ? "zh" : nav.indexOf("id") === 0 ? "id" : "en";
+  $("lang").value = lang;
+  applyLang();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+﻿problemCode,detailCode,detailName,detailNameEn,detailNameId,valueType,valueCode,valueDisplay,valueDisplayEn,valueDisplayId
+itching,severity,嚴重程度,Severity,Tingkat keparahan,code,mild,輕度,Mild,Ringan
+itching,severity,嚴重程度,Severity,Tingkat keparahan,code,moderate,中度,Moderate,Sedang
+itching,severity,嚴重程度,Severity,Tingkat keparahan,code,severe,重度,Severe,Berat
+itching,bodySite,搔癢部位,Body Site,Lokasi gatal,code,scalp,頭皮,Scalp,Kulit kepala
+itching,bodySite,搔癢部位,Body Site,Lokasi gatal,code,face,臉部,Face,Wajah
+itching,bodySite,搔癢部位,Body Site,Lokasi gatal,code,trunk,軀幹,Trunk,Badan
+itching,bodySite,搔癢部位,Body Site,Lokasi gatal,code,arm,手臂,Arm,Lengan
+itching,bodySite,搔癢部位,Body Site,Lokasi gatal,code,leg,腿部,Leg,Tungkai
+itching,bodySite,搔癢部位,Body Site,Lokasi gatal,code,hand,手部,Hand,Tangan
+itching,bodySite,搔癢部位,Body Site,Lokasi gatal,code,foot,足部,Foot,Kaki
+itching,bodySite,搔癢部位,Body Site,Lokasi gatal,code,genital,生殖器部位,Genital area,Area kelamin
+itching,bodySite,搔癢部位,Body Site,Lokasi gatal,code,generalized,全身性,Generalized,Seluruh tubuh
+itching,quality,搔癢感受,Itching Quality,Sifat gatal,code,prickling,刺癢,Prickling,Seperti tertusuk-tusuk
+itching,quality,搔癢感受,Itching Quality,Sifat gatal,code,burning,灼熱感,Burning,Terasa terbakar
+itching,quality,搔癢感受,Itching Quality,Sifat gatal,code,tingling,麻刺感,Tingling,Kesemutan
+itching,onset,發生速度,Onset Speed,Kecepatan onset,code,sudden,突然發生,Sudden onset,Muncul tiba-tiba
+itching,onset,發生速度,Onset Speed,Kecepatan onset,code,gradual,逐漸發生,Gradual onset,Muncul bertahap
+itching,duration,持續時間,Duration,Durasi,code,less-than-1-hour,少於 1 小時,Less than 1 hour,Kurang dari 1 jam
+itching,duration,持續時間,Duration,Durasi,code,1-to-24-hours,1 至 24 小時,1 to 24 hours,1 hingga 24 jam
+itching,duration,持續時間,Duration,Durasi,code,more-than-24-hours,超過 24 小時,More than 24 hours,Lebih dari 24 jam
+itching,frequency,發生頻率,Frequency,Frekuensi,code,continuous,持續性,Continuous,Terus-menerus
+itching,frequency,發生頻率,Frequency,Frekuensi,code,intermittent,間歇性,Intermittent,Hilang timbul
+itching,aggravating,加重因素,Aggravating Factor,Faktor yang memperberat,code,scratching,搔抓,Scratching,Menggaruk
+itching,aggravating,加重因素,Aggravating Factor,Faktor yang memperberat,code,heat,高溫,Heat,Panas
+itching,aggravating,加重因素,Aggravating Factor,Faktor yang memperberat,code,sweating,流汗,Sweating,Berkeringat
+itching,aggravating,加重因素,Aggravating Factor,Faktor yang memperberat,code,bathing,沐浴,Bathing,Mandi
+itching,relieving,緩解因素,Relieving Factor,Faktor yang meredakan,code,cooling,冰涼或降溫,Cooling,Pendinginan
+itching,relieving,緩解因素,Relieving Factor,Faktor yang meredakan,code,moisturizer,使用保濕用品,Moisturizer,Pelembap
+itching,relieving,緩解因素,Relieving Factor,Faktor yang meredakan,code,antihistamine,使用抗組織胺藥物,Antihistamine,Antihistamin
+itching,associated,伴隨症狀,Associated Symptom,Gejala penyerta,code,rash,皮疹,Rash,Ruam
+itching,associated,伴隨症狀,Associated Symptom,Gejala penyerta,code,redness,發紅,Redness,Kemerahan
+itching,associated,伴隨症狀,Associated Symptom,Gejala penyerta,code,swelling,腫脹,Swelling,Bengkak
+itching,associated,伴隨症狀,Associated Symptom,Gejala penyerta,code,dry-skin,皮膚乾燥,Dry skin,Kulit kering
+itching,associated,伴隨症狀,Associated Symptom,Gejala penyerta,code,blisters,水疱,Blisters,Lepuh

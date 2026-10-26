@@ -1,0 +1,12 @@
+﻿problemCode,detailCode,detailName,detailNameEn,detailNameId,valueType,valueCode,valueDisplay,valueDisplayEn,valueDisplayId
+fever,severity,嚴重程度,Severity,Tingkat keparahan,code,low-grade,低燒,Low-grade fever,Demam ringan
+fever,severity,嚴重程度,Severity,Tingkat keparahan,code,moderate,中度發燒,Moderate fever,Demam sedang
+fever,severity,嚴重程度,Severity,Tingkat keparahan,code,high-grade,高燒,High-grade fever,Demam tinggi
+fever,duration,持續時間,Duration,Durasi,code,less-than-1-day,少於 1 天,Less than 1 day,Kurang dari 1 hari
+fever,duration,持續時間,Duration,Durasi,code,1-to-3-days,1 至 3 天,1 to 3 days,1 hingga 3 hari
+fever,duration,持續時間,Duration,Durasi,code,more-than-3-days,超過 3 天,More than 3 days,Lebih dari 3 hari
+fever,associated,伴隨症狀,Associated Symptoms,Gejala penyerta,code,chills,畏寒/發冷,Chills,Menggigil
+fever,associated,伴隨症狀,Associated Symptoms,Gejala penyerta,code,sweating,冒汗,Sweating,Berkeringat
+fever,associated,伴隨症狀,Associated Symptoms,Gejala penyerta,code,headache,頭痛,Headache,Sakit kepala
+fever,associated,伴隨症狀,Associated Symptoms,Gejala penyerta,code,body-ache,全身痠痛,Body ache,Pegal-pegal di seluruh tubuh
+fever,associated,伴隨症狀,Associated Symptoms,Gejala penyerta,code,cough,咳嗽,Cough,Batuk

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Patient problem Observation 輸入 (micro IG)</title>
+<style>
+:root{--bg:#f5f7f8;--card:#fff;--ink:#1d2b33;--mute:#5d6e78;--line:#d5dde2;--accent:#0f6b6b;--accent-ink:#fff;--warn:#a33a2b;--ok:#1f6b3a}
+@media (prefers-color-scheme:dark){:root{--bg:#12191d;--card:#1a242a;--ink:#e6edf0;--mute:#9aaab3;--line:#2e3d45;--accent:#4fb3b3;--accent-ink:#0b1417;--warn:#ff8f7e;--ok:#7fd39b}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Noto Sans TC","Microsoft JhengHei",sans-serif}
+main{max-width:860px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:1.4rem;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 20px}
+section{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:16px;margin-bottom:16px}
+h2{font-size:1.05rem;margin:0 0 12px}
+label{display:block;font-size:.9rem;color:var(--mute);margin:10px 0 4px}
+input[type=text],select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);font:inherit}
+textarea{font:13px/1.45 ui-monospace,Menlo,Consolas,monospace;min-height:220px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:620px){.row{grid-template-columns:1fr}}
+button{font:inherit;padding:8px 16px;border-radius:4px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);cursor:pointer;margin:12px 8px 0 0}
+button.ghost{background:transparent;color:var(--accent)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+fieldset{border:1px solid var(--line);border-radius:4px;margin:12px 0;padding:8px 12px}
+legend{font-weight:600;padding:0 6px}
+legend small{font-weight:400;color:var(--mute);margin-left:6px}
+.opts{display:flex;flex-wrap:wrap;gap:4px 18px}
+.opts label{display:flex;align-items:center;gap:6px;margin:4px 0;color:var(--ink);font-size:1rem}
+.msg{margin:10px 0 0;font-size:.92rem}
+.err{color:var(--warn)}.ok{color:var(--ok)}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+<h1>病人問題狀況 Observation 輸入</h1>
+<p class="sub">讀取 DocumentReference 內的 detail.csv，依規格產生選項，輸出符合 patient problem micro IG 模板的 FHIR Observation。</p>
+
+<section>
+<h2>1. 設定與載入規格</h2>
+<div class="row">
+<div><label for="base">FHIR server</label><input type="text" id="base" value="https://hapi.fhir.org/baseR4"></div>
+<div><label for="pid">Patient.id</label><input type="text" id="pid" value="7158c01b-32ba-4fbd-a038-201a0a2a4e2a"></div>
+</div>
+<label for="drurl">DocumentReference URL（內含 base64 的 detail.csv）</label>
+<input type="text" id="drurl" value="https://hapi.fhir.org/baseR4/DocumentReference/0357f300-36e8-4f04-8049-746854d9c03a">
+<label for="csvfile">或直接選擇本機 detail.csv</label>
+<input type="file" id="csvfile" accept=".csv,text/csv">
+<button id="btnLoad">載入規格</button>
+<p class="msg" id="loadMsg" role="status"></p>
+</section>
+
+<section id="formSec" hidden>
+<h2>2. 輸入問題細節</h2>
+<div class="row">
+<div><label for="problem">問題 (problemCode)</label><select id="problem"></select></div>
+<div><label for="pdisp">問題中文說明 (problem.display)</label><input type="text" id="pdisp"></div>
+</div>
+<label for="mtime">量測時間（預設為電腦目前時間）</label>
+<input type="text" id="mtime" readonly>
+<div id="details"></div>
+<button id="btnGen">產生 JSON</button>
+</section>
+
+<section id="jsonSec" hidden>
+<h2>3. Observation JSON</h2>
+<textarea id="jsonOut" spellcheck="false" aria-label="Observation JSON"></textarea>
+<button id="btnPost">上傳到 FHIR server</button>
+<h2 style="margin-top:20px">4. 伺服器回應</h2>
+<textarea id="resp" readonly aria-label="Server response" style="min-height:140px"></textarea>
+<p class="msg" id="postMsg" role="status"></p>
+</section>
+</main>
+
+<script>
+// ---------- 設定 ----------
+var SYS = {
+  category: "https://misac/codesystem/categorycode",
+  problem: "https://misac/codesystem/patient_problem_code",
+  detail: "https://misac/codesystem/patient_problem_detail_code",
+  value: "https://misac/codesystem/patient_problem_detail_value"
+};
+// detail.csv 沒有 selectionType 欄位時的預設：這些 detailCode 視為單選，其餘為多選
+var SINGLE_DEFAULT = ["severity", "frequency", "onset", "duration"];
+var rows = [];   // 解析後的 detail.csv
+
+var $ = function (id) { return document.getElementById(id); };
+function say(id, text, cls) { var e = $(id); e.textContent = text; e.className = "msg " + (cls || ""); }
+
+// ---------- CSV ----------
+function parseCSV(text) {
+  text = text.replace(/^\uFEFF/, "");
+  var out = [], row = [], cur = "", q = false;
+  for (var i = 0; i < text.length; i++) {
+    var c = text[i];
+    if (q) {
+      if (c === '"' && text[i + 1] === '"') { cur += '"'; i++; }
+      else if (c === '"') q = false;
+      else cur += c;
+    } else if (c === '"') q = true;
+    else if (c === ",") { row.push(cur); cur = ""; }
+    else if (c === "\n" || c === "\r") {
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      row.push(cur); cur = "";
+      if (row.some(function (x) { return x.trim() !== ""; })) out.push(row);
+      row = [];
+    } else cur += c;
+  }
+  row.push(cur);
+  if (row.some(function (x) { return x.trim() !== ""; })) out.push(row);
+  if (!out.length) return [];
+  var head = out[0].map(function (h) { return h.trim(); });
+  return out.slice(1).map(function (r) {
+    var o = {};
+    head.forEach(function (h, i) { o[h] = (r[i] || "").trim(); });
+    return o;
+  });
+}
+
+function b64ToText(b64) {
+  var bin = atob(b64.replace(/\s/g, ""));
+  var bytes = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder("utf-8").decode(bytes);
+}
+
+// ---------- 載入 ----------
+function useCSV(text) {
+  rows = parseCSV(text).filter(function (r) { return r.problemCode && r.detailCode && r.valueCode; });
+  if (!rows.length) throw new Error("CSV 沒有可用資料，請確認欄位含 problemCode, detailCode, valueCode");
+  var problems = [], seen = {};
+  rows.forEach(function (r) { if (!seen[r.problemCode]) { seen[r.problemCode] = 1; problems.push(r.problemCode); } });
+  var sel = $("problem");
+  sel.innerHTML = "";
+  problems.forEach(function (p) { var o = document.createElement("option"); o.value = p; o.textContent = p; sel.appendChild(o); });
+  $("formSec").hidden = false;
+  $("jsonSec").hidden = true;
+  $("mtime").value = new Date().toISOString();
+  renderDetails();
+  say("loadMsg", "已載入 " + rows.length + " 列規格，問題 " + problems.length + " 種。", "ok");
+}
+
+$("btnLoad").onclick = function () {
+  var f = $("csvfile").files[0];
+  if (f) {
+    var rd = new FileReader();
+    rd.onload = function () { try { useCSV(rd.result); } catch (e) { say("loadMsg", e.message, "err"); } };
+    rd.readAsText(f, "utf-8");
+    return;
+  }
+  var url = $("drurl").value.trim();
+  if (!url) { say("loadMsg", "請輸入 DocumentReference URL 或選擇 CSV 檔。", "err"); return; }
+  say("loadMsg", "載入中…");
+  fetch(url, { headers: { Accept: "application/fhir+json" } })
+    .then(function (r) { if (!r.ok) throw new Error("讀取失敗 HTTP " + r.status); return r.json(); })
+    .then(function (dr) {
+      var data = dr.content && dr.content[0] && dr.content[0].attachment && dr.content[0].attachment.data;
+      if (!data) throw new Error("此 DocumentReference 沒有 content.attachment.data");
+      useCSV(b64ToText(data));
+    })
+    .catch(function (e) { say("loadMsg", e.message, "err"); });
+};
+
+// ---------- 輸入表單 ----------
+function isSingle(detailRows) {
+  var t = (detailRows[0].selectionType || "").toLowerCase();
+  if (t) return t === "single";
+  return SINGLE_DEFAULT.indexOf(detailRows[0].detailCode) >= 0;
+}
+
+function renderDetails() {
+  var p = $("problem").value, box = $("details");
+  box.innerHTML = "";
+  var groups = {}, order = [];
+  rows.filter(function (r) { return r.problemCode === p; }).forEach(function (r) {
+    if (!groups[r.detailCode]) { groups[r.detailCode] = []; order.push(r.detailCode); }
+    groups[r.detailCode].push(r);
+  });
+  order.forEach(function (dc) {
+    var g = groups[dc], single = isSingle(g);
+    var fs = document.createElement("fieldset");
+    var lg = document.createElement("legend");
+    lg.textContent = (g[0].detailName || dc) + (g[0].detailNameEn ? " / " + g[0].detailNameEn : "");
+    var sm = document.createElement("small");
+    sm.textContent = single ? "單選" : "可多選";
+    lg.appendChild(sm);
+    fs.appendChild(lg);
+    var opts = document.createElement("div");
+    opts.className = "opts";
+    g.forEach(function (r, i) {
+      var lab = document.createElement("label");
+      var inp = document.createElement("input");
+      inp.type = single ? "radio" : "checkbox";
+      inp.name = "d_" + dc;
+      inp.value = r.valueCode;
+      inp.setAttribute("data-detail", dc);
+      lab.appendChild(inp);
+      lab.appendChild(document.createTextNode(r.valueDisplay + (r.valueDisplayEn ? " (" + r.valueDisplayEn + ")" : "")));
+      opts.appendChild(lab);
+    });
+    fs.appendChild(opts);
+    box.appendChild(fs);
+  });
+}
+$("problem").onchange = function () { $("jsonSec").hidden = true; renderDetails(); };
+
+// ---------- 產生 Observation ----------
+function buildObservation() {
+  var p = $("problem").value;
+  var pdisp = $("pdisp").value.trim() || p;
+  var comps = [];
+  document.querySelectorAll("#details input:checked").forEach(function (inp) {
+    var r = rows.filter(function (x) {
+      return x.problemCode === p && x.detailCode === inp.getAttribute("data-detail") && x.valueCode === inp.value;
+    })[0];
+    if (!r) return;
+    var valueCoding = [{ system: SYS.value, code: r.valueCode, display: r.valueDisplay }];
+    // 若 CSV 有 system / code 欄位且為標準編碼，加入第二組 coding
+    if (r.code && r.system && r.system !== "localCode") {
+      var uri = /snomed/i.test(r.system) ? "http://snomed.info/sct" : r.system;
+      valueCoding.push({ system: uri, code: r.code, display: r.valueDisplayEn || r.valueDisplay });
+    }
+    comps.push({
+      code: { coding: [{ system: SYS.detail, code: r.detailCode, display: r.detailName }] },
+      valueCodeableConcept: { coding: valueCoding, text: r.valueDisplay }
+    });
+  });
+  return {
+    resourceType: "Observation",
+    status: "final",
+    category: [{ coding: [{ system: SYS.category, code: "patient_problem", display: "病人問題狀況" }] }],
+    code: { coding: [{ system: SYS.problem, code: p, display: pdisp }] },
+    subject: { reference: "Patient/" + $("pid").value.trim() },
+    effectiveDateTime: new Date().toISOString(),
+    component: comps
+  };
+}
+
+$("btnGen").onclick = function () {
+  var obs = buildObservation();
+  $("jsonOut").value = JSON.stringify(obs, null, 2);
+  $("jsonSec").hidden = false;
+  $("resp").value = "";
+  say("postMsg", obs.component.length ? "已產生 " + obs.component.length + " 個 component，可在上方修改後上傳。" : "尚未選擇任何細節，仍可上傳僅含問題代碼的紀錄。");
+};
+
+// ---------- 上傳 ----------
+$("btnPost").onclick = function () {
+  var body;
+  try { body = JSON.parse($("jsonOut").value); } catch (e) { say("postMsg", "JSON 格式錯誤：" + e.message, "err"); return; }
+  var base = $("base").value.trim().replace(/\/$/, "");
+  say("postMsg", "上傳中…");
+  fetch(base + "/Observation", {
+    method: "POST",
+    headers: { "Content-Type": "application/fhir+json", Accept: "application/fhir+json" },
+    body: JSON.stringify(body)
+  })
+    .then(function (r) {
+      return r.text().then(function (t) { return { ok: r.ok, status: r.status, text: t }; });
+    })
+    .then(function (res) {
+      var pretty = res.text;
+      var j = null;
+      try { j = JSON.parse(res.text); pretty = JSON.stringify(j, null, 2); } catch (e) {}
+      $("resp").value = "HTTP " + res.status + "\n" + pretty;
+      if (res.ok && j && j.id) {
+        var url = base + "/Observation/" + j.id;
+        var m = $("postMsg");
+        m.className = "msg ok";
+        m.textContent = "上傳成功。調閱 URL：";
+        var a = document.createElement("a");
+        a.href = url; a.target = "_blank"; a.rel = "noopener"; a.textContent = url;
+        m.appendChild(a);
+      } else say("postMsg", "上傳失敗，請查看伺服器回應。", "err");
+    })
+    .catch(function (e) { say("postMsg", "連線失敗：" + e.message, "err"); });
+};
+</script>
+</body>
+</html>
